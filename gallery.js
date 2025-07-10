@@ -10,21 +10,29 @@ function createCard(i) {
   const img = document.createElement('img');
   img.loading = 'lazy';
 
+  const idNumber = document.createElement('div');
+  idNumber.className = 'id-number';
+  idNumber.textContent = `#${i}`;
+
   const name = document.createElement('div');
   name.className = 'name';
 
-  if (i === 1 && localStorage.getItem('customImage1')) {
-    img.src = localStorage.getItem('customImage1');
-    name.textContent = localStorage.getItem('customName1') || `Person ${i}`;
+  if (localStorage.getItem(`customImage${i}`)) {
+    img.src = localStorage.getItem(`customImage${i}`);
+    name.textContent = localStorage.getItem(`customName${i}`) || `Person ${i}`;
   } else {
     img.src = `image/assets/${i}.jpg`;
-    name.textContent = `Person ${i}`;
+    name.textContent = 'Coming Soon';
+    card.classList.add('soon');
   }
 
   img.alt = name.textContent;
+  img.onclick = () => openModal(img.src);
 
   card.appendChild(img);
+  card.appendChild(idNumber);
   card.appendChild(name);
+
   return card;
 }
 
@@ -54,6 +62,15 @@ function toggleTheme() {
     root.style.setProperty('--accent', '#0077ff');
     root.style.setProperty('--card-bg', '#f9f9f9');
   }
+}
+
+function openModal(src) {
+  document.getElementById("myModal").style.display = "block";
+  document.getElementById("modalImg").src = src;
+}
+
+function closeModal() {
+  document.getElementById("myModal").style.display = "none";
 }
 
 window.onload = loadMore;
