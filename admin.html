@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,17 +11,12 @@
       padding: 40px;
       background: #f0f0f0;
     }
-
-    h1 { margin-bottom: 30px; }
-
-    input[type="text"],
-    input[type="file"] {
+    input, select, textarea {
       padding: 10px;
       margin: 10px;
       width: 300px;
       font-size: 16px;
     }
-
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -29,80 +25,154 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      margin: 5px;
     }
-
-    #adminPanel {
-      display: none;
-      margin-top: 30px;
-    }
-
-    #preview {
-      margin-top: 20px;
-      max-width: 300px;
-      display: none;
-    }
+    .delete-btn { background: red; }
+    .import-btn { background: orange; }
+    .export-btn { background: green; }
+    #adminPanel { display: none; margin-top: 30px; }
+    #preview { margin-top: 20px; max-width: 300px; display: none; }
+    #errorMsg { color: red; display: none; }
   </style>
 </head>
 <body>
-
   <h1>🛡 Admin Access</h1>
-  <p>Paste your Facebook profile link to access update tools:</p>
-
-  <input type="text" id="fbLink" placeholder="https://www.facebook.com/yourname">
+  <input type="password" id="pin" placeholder="Enter admin PIN"><br>
+  <input type="text" id="fbLink" placeholder="https://www.facebook.com/yourname"><br>
   <button onclick="verifyFacebook()">Login</button>
+  <p id="errorMsg">❌ Access denied. You are not authorized.</p>
 
   <div id="adminPanel">
-    <h2>Update First Picture and Name</h2>
+    <h2>Update Gallery Image & Name</h2>
+    <p id="imageCount" style="font-weight: bold; font-size: 18px;">Images added: 0 of 100</p>
+    <select id="selectId"></select><br>
     <input type="file" id="imgInput" accept="image/*"><br>
-    <input type="text" id="nameInput" placeholder="Enter new name"><br>
-    <button onclick="saveChanges()">Save Changes</button>
-    <img id="preview" src="" alt="Preview">
+    <input type="text" id="nameInput" placeholder="Enter name"><br>
+    <button onclick="saveChanges()">Save</button>
+    <button class="delete-btn" onclick="deleteEntry()">Delete</button>
+    <img id="preview" src="" alt="Preview"><br>
+    <hr>
+    <h3>Backup & Restore</h3>
+    <button class="export-btn" onclick="exportData()">Export</button>
+    <button class="import-btn" onclick="importData()">Import</button>
+    <button class="delete-btn" onclick="resetAll()">Reset All</button><br>
+    <textarea id="jsonData" rows="10" placeholder="Paste JSON data here..."></textarea>
   </div>
 
   <script>
-    const allowedFacebook = "https://www.facebook.com/christian.bahaw";
+    const allowedFacebookLinks = [
+      "https://www.facebook.com/christian.bahaw",
+      "https://www.facebook.com/james.rubio.official"
+    ];
+    const correctPin = "1234";
+
+    window.onload = () => {
+      const select = document.getElementById("selectId");
+      for (let i = 1; i <= 100; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.text = `#${i}`;
+        select.appendChild(opt);
+      }
+    };
 
     function verifyFacebook() {
+      const pin = document.getElementById("pin").value.trim();
       const fbLink = document.getElementById("fbLink").value.trim();
-      if (fbLink === allowedFacebook) {
-        alert("Access granted.");
-        document.getElementById("adminPanel").style.display = "block";
-      } else {
-        alert("Access denied.");
+      if (pin !== correctPin || !allowedFacebookLinks.includes(fbLink)) {
+        document.getElementById("errorMsg").style.display = "block";
+        return;
       }
+      document.getElementById("adminPanel").style.display = "block";
+      document.getElementById("errorMsg").style.display = "none";
+      updateImageCount();
+    }
+
+    function updateImageCount() {
+      let count = 0;
+      for (let i = 1; i <= 100; i++) {
+        if (localStorage.getItem('customImage' + i)) count++;
+      }
+      document.getElementById('imageCount').textContent = `Images added: ${count} of 100`;
     }
 
     document.getElementById('imgInput').addEventListener('change', function () {
       const file = this.files[0];
-      const preview = document.getElementById('preview');
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          preview.src = e.target.result;
-          preview.style.display = "block";
-        };
-        reader.readAsDataURL(file);
-      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const preview = document.getElementById('preview');
+        preview.src = e.target.result;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
     });
 
     function saveChanges() {
+      const id = document.getElementById('selectId').value;
       const name = document.getElementById('nameInput').value.trim();
       const file = document.getElementById('imgInput').files[0];
-
-      if (!file || !name) {
-        alert("Please select an image and enter a name.");
-        return;
-      }
-
+      if (!file || !name) return alert("Please select an image and enter a name.");
       const reader = new FileReader();
       reader.onload = function (e) {
-        localStorage.setItem('customImage1', e.target.result);
-        localStorage.setItem('customName1', name);
-        alert("Changes saved! Go to the main page to see the update.");
+        localStorage.setItem('customImage' + id, e.target.result);
+        localStorage.setItem('customName' + id, name);
+        alert("Saved entry #" + id);
+        updateImageCount();
       };
       reader.readAsDataURL(file);
     }
-  </script>
 
+    function deleteEntry() {
+      const id = document.getElementById('selectId').value;
+      if (confirm("Delete entry #" + id + "?")) {
+        localStorage.removeItem('customImage' + id);
+        localStorage.removeItem('customName' + id);
+        alert("Deleted entry #" + id);
+        document.getElementById('preview').style.display = "none";
+        updateImageCount();
+      }
+    }
+
+    function exportData() {
+      let data = {};
+      for (let i = 1; i <= 100; i++) {
+        const img = localStorage.getItem('customImage' + i);
+        const name = localStorage.getItem('customName' + i);
+        if (img || name) {
+          data[i] = { image: img, name: name };
+        }
+      }
+      document.getElementById("jsonData").value = JSON.stringify(data, null, 2);
+      alert("Exported JSON!");
+    }
+
+    function importData() {
+      try {
+        const json = document.getElementById("jsonData").value.trim();
+        const data = JSON.parse(json);
+        for (const i in data) {
+          if (data[i].image) localStorage.setItem("customImage" + i, data[i].image);
+          if (data[i].name) localStorage.setItem("customName" + i, data[i].name);
+        }
+        alert("Imported successfully!");
+        updateImageCount();
+      } catch (e) {
+        alert("Invalid JSON!");
+      }
+    }
+
+    function resetAll() {
+      if (confirm("Clear ALL saved entries?")) {
+        for (let i = 1; i <= 100; i++) {
+          localStorage.removeItem('customImage' + i);
+          localStorage.removeItem('customName' + i);
+        }
+        document.getElementById("jsonData").value = "";
+        document.getElementById("preview").style.display = "none";
+        updateImageCount();
+        alert("All data cleared!");
+      }
+    }
+  </script>
 </body>
 </html>
